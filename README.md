@@ -52,3 +52,7 @@ pred_perturbed_adata = model.predict(control_adata=control_adata,
                    cell_type_key=cell_type_key,
                    condition_key=condition_key)
 ```
+
+### Attention
+The branch of master is the version without cell type information;
+The branch of scPreGAN-AC is the version corresponding to our published paper.
