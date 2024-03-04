@@ -4,7 +4,7 @@
 
 The official implementation of "scPreGAN, a deep generative model for 
 predicting the response of single cell expression to perturbation".
-For reproducing the paper results, please visit XXX.
+For reproducing the paper results, please visit https://academic.oup.com/bioinformatics/article/38/13/3377/6593485.
 
 ## Installation
 
@@ -15,6 +15,7 @@ For reproducing the paper results, please visit XXX.
 Example for out of sample prediction data of scRNA-seq data is shown in XXX.
 The data utilize in scPreGAN is in the h5ad format. If your data is in other
 format, please refer to Scanpy' or anndata's tutorial for how to create one.
+
 ### Input
 The data input to scPreGAN are better the normalized and scaled data, 
 you can use follow codes for this purpose.
@@ -54,6 +55,11 @@ pred_perturbed_adata = model.predict(control_adata=control_adata,
                    cell_type_key=cell_type_key,
                    condition_key=condition_key)
 ```
+
+### environment
+python 3.7.11
+More related packages can be found in requirements.txt. 
+
 
 ### Attention
 The branch of master is the version without cell type information;
