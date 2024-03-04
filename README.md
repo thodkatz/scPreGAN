@@ -6,9 +6,9 @@ The official implementation of "scPreGAN, a deep generative model for
 predicting the response of single cell expression to perturbation".
 For reproducing the paper results, please visit https://academic.oup.com/bioinformatics/article/38/13/3377/6593485.
 
-## Installation
+## download
 
-`pip install git+https://github.com/XiajieWei/scPreGAN.git`
+`git clone git@github.com:JaneJiayiDong/scPreGAN.git`
 
 ## Example
 
