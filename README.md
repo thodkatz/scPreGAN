@@ -57,8 +57,10 @@ pred_perturbed_adata = model.predict(control_adata=control_adata,
 ```
 
 ### environment
-python 3.7.11
-More related packages can be found in requirements.txt. 
+Ubuntu server with an NVIDIA GeForce RTX 2080 Ti GPU and 64GB of memory.  
+Python 3.7.11  
+More related packages can be found in requirements.txt.   
+
 
 
 ### Attention
