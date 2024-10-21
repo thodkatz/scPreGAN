@@ -104,6 +104,10 @@ class Model:
                                                      batch_size=batch_size,
                                                      shuffle=True,
                                                      drop_last=True)
+        
+        A_train_loader_it = iter(A_train_loader)
+        B_train_loader_it = iter(B_train_loader)
+        
         if valid_data is not None:
             A_pd_val, A_celltype_ohe_pd_val, B_pd_val, B_celltype_ohe_pd_val = valid_data
 
@@ -135,8 +139,7 @@ class Model:
                                                          batch_size=batch_size,
                                                          shuffle=True,
                                                          drop_last=True)
-        A_train_loader_it = iter(A_train_loader)
-        B_train_loader_it = iter(B_train_loader)
+
         # loss function
         recon_criterion = nn.MSELoss()
         encoding_criterion = nn.MSELoss()
@@ -153,8 +156,8 @@ class Model:
         zeros = torch.zeros(batch_size, 1)
 
         if self.use_cuda and torch.cuda.is_available():
-            ones.cuda()
-            zeros.cuda()
+            ones = ones.cuda()
+            zeros = zeros.cuda()
 
         self.D_A.train()
         self.D_B.train()
@@ -185,12 +188,12 @@ class Model:
             D_B_loss_item = 0.0
 
             try:
-                real_A, cell_type_A = A_train_loader_it.next()[0]
-                real_B, cell_type_B = B_train_loader_it.next()[0]
+                real_A, cell_type_A = next(A_train_loader_it)
+                real_B, cell_type_B = next(B_train_loader_it)
             except StopIteration:
                 A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(B_train_loader)
-                real_A, cell_type_A = A_train_loader_it.next()[0]
-                real_B, cell_type_B = B_train_loader_it.next()[0]
+                real_A, cell_type_A = next(A_train_loader_it)
+                real_B, cell_type_B = next(B_train_loader_it)
 
             if self.use_cuda and cuda_is_available():
                 real_A = real_A.cuda()
@@ -245,12 +248,12 @@ class Model:
 
             # Train encoder and decoder
             try:
-                real_A, cell_type_A = A_train_loader_it.next()[0]
-                real_B, cell_type_B = B_train_loader_it.next()[0]
+                real_A, cell_type_A = next(A_train_loader_it)
+                real_B, cell_type_B = next(B_train_loader_it)
             except StopIteration:
                 A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(B_train_loader)
-                real_A, cell_type_A = A_train_loader_it.next()[0]
-                real_B, cell_type_B = B_train_loader_it.next()[0]
+                real_A, cell_type_A = next(A_train_loader_it)
+                real_B, cell_type_B = next(B_train_loader_it)
 
             if self.use_cuda and cuda_is_available():
                 real_A = real_A.cuda()
