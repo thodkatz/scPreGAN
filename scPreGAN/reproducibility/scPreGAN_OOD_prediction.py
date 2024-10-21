@@ -20,10 +20,10 @@ import torch.nn.functional as F
 import scanpy as sc
 import anndata
 from scipy import sparse
-from util import load_anndata
-from model.Discriminator import Discriminator
-from model.Generator import Generator
-from model.Encoder import Encoder
+from scPreGAN.reproducibility.util import load_anndata
+from scPreGAN.reproducibility.model.Discriminator import Discriminator
+from scPreGAN.reproducibility.model.Generator import Generator
+from scPreGAN.reproducibility.model.Encoder import Encoder
 
 
 def init_weights(m):
@@ -248,12 +248,12 @@ def train_scPreGAN(config, opt):
 
         for count in range(0, 5):
             try:
-                real_A = A_train_loader_it.next()[0]
-                real_B = B_train_loader_it.next()[0]
+                real_A = next(A_train_loader_it)[0]
+                real_B = next(B_train_loader_it)[0]
             except StopIteration:
                 A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(B_train_loader)
-                real_A = A_train_loader_it.next()[0]
-                real_B = B_train_loader_it.next()[0]
+                real_A = next(A_train_loader_it)[0]
+                real_B = next(B_train_loader_it)[0]
 
             if (opt['cuda']) and cuda_is_available():
                 real_A = real_A.cuda()
@@ -310,12 +310,12 @@ def train_scPreGAN(config, opt):
             optimizerD_A.step()
             optimizerD_B.step()
         try:
-            real_A = A_train_loader_it.next()[0]
-            real_B = B_train_loader_it.next()[0]
+            real_A = next(A_train_loader_it)[0]
+            real_B = next(B_train_loader_it)[0]
         except StopIteration:
             A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(B_train_loader)
-            real_A = A_train_loader_it.next()[0]
-            real_B = B_train_loader_it.next()[0]
+            real_A = next(A_train_loader_it)[0]
+            real_B = next(B_train_loader_it)[0]
 
         if (opt['cuda']) and cuda_is_available():
             real_A = real_A.cuda()
@@ -445,12 +445,12 @@ def train_scPreGAN(config, opt):
                 with torch.no_grad():
                     for iteration_val in range(1, max_length):
                         try:
-                            cellA_val = A_valid_loader_it.next()[0]
-                            cellB_val = B_valid_loader_it.next()[0]
+                            cellA_val = next(A_valid_loader_it)[0]
+                            cellB_val = next(B_valid_loader_it)[0]
                         except StopIteration:
                             A_valid_loader_it, B_valid_loader_it = iter(A_valid_loader), iter(B_valid_loader)
-                            cellA_val = A_valid_loader_it.next()[0]
-                            cellB_val = B_valid_loader_it.next()[0]
+                            cellA_val = next(A_valid_loader_it)[0]
+                            cellB_val = next(B_valid_loader_it)[0]
 
                         counter += 1
 

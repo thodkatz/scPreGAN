@@ -10,7 +10,7 @@ def label_encoder(adata, cell_type_key, encode_attr):
     labels = le.fit_transform(encode_list)
     labels = labels.reshape(-1, 1)
 
-    le_OneHot = preprocessing.OneHotEncoder(sparse=False)
+    le_OneHot = preprocessing.OneHotEncoder(sparse_output=False)
     labels_onehot = le_OneHot.fit_transform(labels)
 
     return labels_onehot[len(encode_attr):, ]
@@ -33,9 +33,9 @@ def load_anndata(path, condition_key, condition, cell_type_key, prediction_type=
     control_adata = adata[adata.obs[condition_key] == condition['control']]
 
     if sparse.issparse(adata.X):
-        control_pd = pd.DataFrame(data=control_adata.X.A, index=control_adata.obs_names,
+        control_pd = pd.DataFrame(data=control_adata.X.toarray(), index=control_adata.obs_names,
                                   columns=control_adata.var_names)
-        case_pd = pd.DataFrame(data=case_adata.X.A, index=case_adata.obs_names, columns=case_adata.var_names)
+        case_pd = pd.DataFrame(data=case_adata.X.toarray(), index=case_adata.obs_names, columns=case_adata.var_names)
     else:
         control_pd = pd.DataFrame(data=control_adata.X, index=control_adata.obs_names,
                                   columns=control_adata.var_names)
