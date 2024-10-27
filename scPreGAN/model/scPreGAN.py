@@ -111,7 +111,7 @@ class Model:
         tensorboard_path: Path,
         load_model: bool = False,
         valid_data=None,
-        niter=20000,
+        niter=20_000,
         lr_e=0.0001,
         lr_g=0.001,
         lr_d=0.001,
@@ -134,6 +134,8 @@ class Model:
             self.D_A.load_state_dict(torch.load(model_path / "D_A.pth"))
             self.D_B.load_state_dict(torch.load(model_path / "D_B.pth"))
             return
+        
+        os.makedirs(model_path, exist_ok=True)
 
         # load data===============================
         A_pd, A_celltype_ohe_pd, B_pd, B_celltype_ohe_pd = train_data
@@ -611,7 +613,7 @@ class Model:
                         )
                     )
 
-        os.makedirs(model_path, exist_ok=True)
+        print("Saving model to", model_path)
         torch.save(self.E.state_dict(), os.path.join(model_path, "E.pth"))
         torch.save(self.G_A.state_dict(), os.path.join(model_path, "G_A.pth"))
         torch.save(self.G_B.state_dict(), os.path.join(model_path, "G_B.pth"))

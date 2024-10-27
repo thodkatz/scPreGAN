@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 from pathlib import Path
+from pyexpat import model
 import random
 import numpy as np
 from scPreGAN.model.scPreGAN import is_model_trained
@@ -744,11 +745,11 @@ def train_and_predict(config, opt, tensorboard_path: Path, load_model=False) -> 
             path = os.path.join(opt["checkpoint_dir"], "checkpoint_D_B.pth")
             torch.save((D_B.state_dict(), optimizerD_B.state_dict()), path)
 
-    torch.save(E.state_dict(), os.path.join(opt["outf"], 'E.pth'))
-    torch.save(G_A.state_dict(), os.path.join(opt["outf"], 'G_A.pth'))
-    torch.save(G_B.state_dict(), os.path.join(opt["outf"], 'G_B.pth'))
-    torch.save(D_A.state_dict(), os.path.join(opt["outf"], 'D_A.pth'))
-    torch.save(D_B.state_dict(), os.path.join(opt["outf"], 'D_B.pth'))
+    torch.save(E.state_dict(), os.path.join(model_path, 'E.pth'))
+    torch.save(G_A.state_dict(), os.path.join(model_path, 'G_A.pth'))
+    torch.save(G_B.state_dict(), os.path.join(model_path, 'G_B.pth'))
+    torch.save(D_A.state_dict(), os.path.join(model_path, 'D_A.pth'))
+    torch.save(D_B.state_dict(), os.path.join(model_path, 'D_B.pth'))
     writer.close()
     print("Finished Training")
     adata = sc.read(opt["dataPath"])
