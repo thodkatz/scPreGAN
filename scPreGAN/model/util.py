@@ -26,8 +26,7 @@ def load_anndata(
     condition_key,
     condition,
     cell_type_key,
-    prediction_type=None,
-    out_sample_prediction=False,
+    target_cell_type,
 ):
     adata = sc.read(path)
 
@@ -36,13 +35,9 @@ def load_anndata(
 
     adata_celltype_ohe_pd = pd.DataFrame(data=adata_celltype_ohe, index=adata.obs_names)
 
-    if out_sample_prediction:
-        case_adata = adata[
-            ~(adata.obs[cell_type_key] == prediction_type)
-            & (adata.obs[condition_key] == condition["case"])
-        ]
-    else:
-        case_adata = adata[adata.obs[condition_key] == condition["case"]]
+    perturb_adata = adata[adata.obs[condition_key] == condition["case"]]
+
+    case_adata = perturb_adata[perturb_adata.obs[cell_type_key] != target_cell_type]
 
     control_adata = adata[adata.obs[condition_key] == condition["control"]]
 
@@ -54,12 +49,17 @@ def load_anndata(
         index=control_adata.obs_names,
         columns=control_adata.var_names,
     )
-    
+
     case_pd = pd.DataFrame(
         data=case_adata.X, index=case_adata.obs_names, columns=case_adata.var_names
     )
 
     control_celltype_ohe_pd = adata_celltype_ohe_pd.loc[control_pd.index, :]
-    case_celltype_ohe_pd = adata_celltype_ohe_pd.loc[case_pd.index, :]
+    case_celltype_ohe_pd: pd.DataFrame = adata_celltype_ohe_pd.loc[case_pd.index, :]
 
-    return (control_adata, case_adata), (control_pd, control_celltype_ohe_pd, case_pd, case_celltype_ohe_pd)
+    return (control_adata, perturb_adata, case_adata), (
+        control_pd,
+        control_celltype_ohe_pd,
+        case_pd,
+        case_celltype_ohe_pd,
+    )

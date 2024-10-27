@@ -612,23 +612,32 @@ class Model:
                     )
 
         os.makedirs(model_path, exist_ok=True)
-        torch.save(self.E, os.path.join(model_path, "E.pth"))
-        torch.save(self.G_A, os.path.join(model_path, "G_A.pth"))
-        torch.save(self.G_B, os.path.join(model_path, "G_B.pth"))
-        torch.save(self.D_A, os.path.join(model_path, "D_A.pth"))
-        torch.save(self.D_B, os.path.join(model_path, "D_B.pth"))
+        torch.save(self.E.state_dict(), os.path.join(model_path, "E.pth"))
+        torch.save(self.G_A.state_dict(), os.path.join(model_path, "G_A.pth"))
+        torch.save(self.G_B.state_dict(), os.path.join(model_path, "G_B.pth"))
+        torch.save(self.D_A.state_dict(), os.path.join(model_path, "D_A.pth"))
+        torch.save(self.D_B.state_dict(), os.path.join(model_path, "D_B.pth"))
         writer.close()
         print("Training finished.")
 
     def predict(self, control_adata, cell_type_key, condition_key):
+        self.D_A.eval()
+        self.D_B.eval()
+        self.G_A.eval()
+        self.G_B.eval()
+        self.E.eval()
+        
         if sparse.issparse(control_adata.X):
             control_tensor = Tensor(control_adata.X.A)
         else:
             control_tensor = Tensor(control_adata.X)
         if self.use_cuda and cuda_is_available():
             control_tensor = control_tensor.cuda()
-        control_z = self.E(control_tensor)
-        case_pred = self.G_B(control_z)
+            
+        with torch.no_grad():
+            control_z = self.E(control_tensor)
+            case_pred = self.G_B(control_z)
+            
         pred_perturbed_adata = sc.AnnData(
             X=case_pred.cpu().detach().numpy(),
             obs={
@@ -636,6 +645,7 @@ class Model:
                 cell_type_key: control_adata.obs[cell_type_key].tolist(),
             },
         )
+        
         pred_perturbed_adata.var_names = control_adata.var_names
         print("Predicting data finished")
         return pred_perturbed_adata
