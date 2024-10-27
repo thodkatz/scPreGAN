@@ -34,11 +34,19 @@ def init_weights(m):
 
 def create_model(n_features, z_dim, min_hidden_size, use_cuda, use_sn):
     if use_sn:
-        D_A = Discriminator(n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1)
-        D_B = Discriminator(n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1)
+        D_A = Discriminator(
+            n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1
+        )
+        D_B = Discriminator(
+            n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1
+        )
     else:
-        D_A = Discriminator(n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1)
-        D_B = Discriminator(n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1)
+        D_A = Discriminator(
+            n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1
+        )
+        D_B = Discriminator(
+            n_features=n_features, min_hidden_size=min_hidden_size, out_dim=1
+        )
 
     G_A = Generator(z_dim=z_dim, min_hidden_size=min_hidden_size, n_features=n_features)
     G_B = Generator(z_dim=z_dim, min_hidden_size=min_hidden_size, n_features=n_features)
@@ -66,7 +74,9 @@ def create_model(n_features, z_dim, min_hidden_size, use_cuda, use_sn):
 
 
 # 计算损失项
-def calc_gradient_penalty(netD, real_data, fake_data, batch_size, use_cuda, lambta, use_wgan_div, k=2, p=6):
+def calc_gradient_penalty(
+    netD, real_data, fake_data, batch_size, use_cuda, lambta, use_wgan_div, k=2, p=6
+):
     alpha = torch.rand(batch_size, 1)
     alpha = alpha.expand(real_data.size())
     alpha = alpha.cuda() if use_cuda else alpha
@@ -79,10 +89,18 @@ def calc_gradient_penalty(netD, real_data, fake_data, batch_size, use_cuda, lamb
 
     disc_interpolates = netD(interpolates)
 
-    gradients = autograd.grad(outputs=disc_interpolates, inputs=interpolates,
-                              grad_outputs=torch.ones(disc_interpolates.size()).cuda() if use_cuda else torch.ones(
-                                  disc_interpolates.size()),
-                              create_graph=True, retain_graph=True, only_inputs=True)[0]
+    gradients = autograd.grad(
+        outputs=disc_interpolates,
+        inputs=interpolates,
+        grad_outputs=(
+            torch.ones(disc_interpolates.size()).cuda()
+            if use_cuda
+            else torch.ones(disc_interpolates.size())
+        ),
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True,
+    )[0]
 
     if use_wgan_div:
         gradient_penalty = torch.pow(gradients.norm(2, dim=1), p).mean() * k
@@ -91,131 +109,167 @@ def calc_gradient_penalty(netD, real_data, fake_data, batch_size, use_cuda, lamb
     return gradient_penalty
 
 
-def train_scPreGAN(config, opt):
-    if opt['manual_seed'] is None:
-        opt['manual_seed'] = random.randint(1, 10000)
-    print("Random Seed: ", opt['manual_seed'])
-    random.seed(opt['manual_seed'])
-    torch.manual_seed(opt['manual_seed'])
-    if opt['cuda']:
-        torch.cuda.manual_seed_all(opt['manual_seed'])
+def train_and_evaluate(config, opt):
+    if opt["manual_seed"] is None:
+        opt["manual_seed"] = random.randint(1, 10000)
+    print("Random Seed: ", opt["manual_seed"])
+    random.seed(opt["manual_seed"])
+    torch.manual_seed(opt["manual_seed"])
+    if opt["cuda"]:
+        torch.cuda.manual_seed_all(opt["manual_seed"])
     # load data===============================
-    A_pd, A_celltype_ohe_pd, B_pd, B_celltype_ohe_pd = load_anndata(path=opt['dataPath'],
-                                                                    condition_key=opt['condition_key'],
-                                                                    condition=opt['condition'],
-                                                                    cell_type_key=opt['cell_type_key'],
-                                                                    prediction_type=opt['prediction_type'],
-                                                                    out_sample_prediction=opt['out_sample_prediction']
-                                                                    )
+    A_pd, A_celltype_ohe_pd, B_pd, B_celltype_ohe_pd = load_anndata(
+        path=opt["dataPath"],
+        condition_key=opt["condition_key"],
+        condition=opt["condition"],
+        cell_type_key=opt["cell_type_key"],
+        prediction_type=opt["prediction_type"],
+        out_sample_prediction=opt["out_sample_prediction"],
+    )
     A_tensor = Tensor(np.array(A_pd))
     B_tensor = Tensor(np.array(B_pd))
 
-    if opt['cuda'] and torch.cuda.is_available():
+    if opt["cuda"] and torch.cuda.is_available():
         A_tensor = A_tensor.cuda()
         B_tensor = B_tensor.cuda()
 
     A_Dataset = torch.utils.data.TensorDataset(A_tensor)
     B_Dataset = torch.utils.data.TensorDataset(B_tensor)
-    if opt['validation'] and opt['valid_dataPath'] is None:
-        print('splite dataset to train subset and validation subset')
+    if opt["validation"] and opt["valid_dataPath"] is None:
+        print("splite dataset to train subset and validation subset")
         A_test_abs = int(len(A_Dataset) * 0.8)
         A_train_subset, A_val_subset = random_split(
-            A_Dataset, [A_test_abs, len(A_Dataset) - A_test_abs])
+            A_Dataset, [A_test_abs, len(A_Dataset) - A_test_abs]
+        )
 
         B_test_abs = int(len(B_Dataset) * 0.8)
         B_train_subset, B_val_subset = random_split(
-            B_Dataset, [B_test_abs, len(B_Dataset) - B_test_abs])
+            B_Dataset, [B_test_abs, len(B_Dataset) - B_test_abs]
+        )
 
-        A_train_loader = torch.utils.data.DataLoader(dataset=A_train_subset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
+        A_train_loader = torch.utils.data.DataLoader(
+            dataset=A_train_subset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
 
-        B_train_loader = torch.utils.data.DataLoader(dataset=B_train_subset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
-        A_valid_loader = torch.utils.data.DataLoader(dataset=A_val_subset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
-        B_valid_loader = torch.utils.data.DataLoader(dataset=B_val_subset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
-    elif opt['validation'] and opt['valid_dataPath'] is not None:
-        A_pd_val, A_celltype_ohe_pd_val, B_pd_val, B_celltype_ohe_pd_val = load_anndata(path=opt['valid_dataPath'],
-                                                                                        condition_key=opt[
-                                                                                            'condition_key'],
-                                                                                        condition=opt['condition'],
-                                                                                        cell_type_key=opt[
-                                                                                            'cell_type_key'])
+        B_train_loader = torch.utils.data.DataLoader(
+            dataset=B_train_subset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
+        A_valid_loader = torch.utils.data.DataLoader(
+            dataset=A_val_subset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
+        B_valid_loader = torch.utils.data.DataLoader(
+            dataset=B_val_subset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
+    elif opt["validation"] and opt["valid_dataPath"] is not None:
+        A_pd_val, A_celltype_ohe_pd_val, B_pd_val, B_celltype_ohe_pd_val = load_anndata(
+            path=opt["valid_dataPath"],
+            condition_key=opt["condition_key"],
+            condition=opt["condition"],
+            cell_type_key=opt["cell_type_key"],
+        )
 
-        print(f"use validation dataset, lenth of A: {A_pd_val.shape}, lenth of B: {B_pd_val.shape}")
+        print(
+            f"use validation dataset, lenth of A: {A_pd_val.shape}, lenth of B: {B_pd_val.shape}"
+        )
 
         A_tensor_val = Tensor(np.array(A_pd_val))
         B_tensor_val = Tensor(np.array(B_pd_val))
 
-        if opt['cuda'] and torch.cuda.is_available():
+        if opt["cuda"] and torch.cuda.is_available():
             A_tensor_val = A_tensor_val.cuda()
             B_tensor_val = B_tensor_val.cuda()
 
         A_Dataset_val = torch.utils.data.TensorDataset(A_tensor_val)
         B_Dataset_val = torch.utils.data.TensorDataset(B_tensor_val)
 
-        A_train_loader = torch.utils.data.DataLoader(dataset=A_Dataset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
+        A_train_loader = torch.utils.data.DataLoader(
+            dataset=A_Dataset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
 
-        B_train_loader = torch.utils.data.DataLoader(dataset=B_Dataset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
-        A_valid_loader = torch.utils.data.DataLoader(dataset=A_Dataset_val,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
-        B_valid_loader = torch.utils.data.DataLoader(dataset=B_Dataset_val,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
+        B_train_loader = torch.utils.data.DataLoader(
+            dataset=B_Dataset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
+        A_valid_loader = torch.utils.data.DataLoader(
+            dataset=A_Dataset_val,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
+        B_valid_loader = torch.utils.data.DataLoader(
+            dataset=B_Dataset_val,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
 
     else:
-        print('No validation.')
-        A_train_loader = torch.utils.data.DataLoader(dataset=A_Dataset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
+        print("No validation.")
+        A_train_loader = torch.utils.data.DataLoader(
+            dataset=A_Dataset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
 
-        B_train_loader = torch.utils.data.DataLoader(dataset=B_Dataset,
-                                                     batch_size=int(config['batch_size']),
-                                                     shuffle=True,
-                                                     drop_last=True)
+        B_train_loader = torch.utils.data.DataLoader(
+            dataset=B_Dataset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            drop_last=True,
+        )
 
-    opt['n_features'] = A_pd.shape[1]
-    print("feature length: ", opt['n_features'])
+    opt["n_features"] = A_pd.shape[1]
+    print("feature length: ", opt["n_features"])
     A_train_loader_it = iter(A_train_loader)
     B_train_loader_it = iter(B_train_loader)
 
-    E, G_A, G_B, D_A, D_B = create_model(n_features=opt['n_features'],
-                                         z_dim=config['z_dim'],
-                                         min_hidden_size=config['min_hidden_size'],
-                                         use_cuda=opt['cuda'], use_sn=opt['use_sn'])
+    E, G_A, G_B, D_A, D_B = create_model(
+        n_features=opt["n_features"],
+        z_dim=config["z_dim"],
+        min_hidden_size=config["min_hidden_size"],
+        use_cuda=opt["cuda"],
+        use_sn=opt["use_sn"],
+    )
 
     recon_criterion = nn.MSELoss()
     encoding_criterion = nn.MSELoss()
 
-    optimizerD_A = torch.optim.Adam(D_A.parameters(), lr=config['lr_disc'], betas=(0.5, 0.9))
-    optimizerD_B = torch.optim.Adam(D_B.parameters(), lr=config['lr_disc'], betas=(0.5, 0.9))
-    optimizerG_A = torch.optim.Adam(G_A.parameters(), lr=config['lr_g'], betas=(0.5, 0.9))
-    optimizerG_B = torch.optim.Adam(G_B.parameters(), lr=config['lr_g'], betas=(0.5, 0.9))
-    optimizerE = torch.optim.Adam(E.parameters(), lr=config['lr_e'])
+    optimizerD_A = torch.optim.Adam(
+        D_A.parameters(), lr=config["lr_disc"], betas=(0.5, 0.9)
+    )
+    optimizerD_B = torch.optim.Adam(
+        D_B.parameters(), lr=config["lr_disc"], betas=(0.5, 0.9)
+    )
+    optimizerG_A = torch.optim.Adam(
+        G_A.parameters(), lr=config["lr_g"], betas=(0.5, 0.9)
+    )
+    optimizerG_B = torch.optim.Adam(
+        G_B.parameters(), lr=config["lr_g"], betas=(0.5, 0.9)
+    )
+    optimizerE = torch.optim.Adam(E.parameters(), lr=config["lr_e"])
 
-    ones = torch.ones(config['batch_size'], 1)
-    zeros = torch.zeros(config['batch_size'], 1)
+    ones = torch.ones(config["batch_size"], 1)
+    zeros = torch.zeros(config["batch_size"], 1)
 
-    if (opt['cuda']):
+    if opt["cuda"]:
         ones.cuda()
         zeros.cuda()
 
@@ -233,29 +287,31 @@ def train_scPreGAN(config, opt):
         os.makedirs(log_path)
     writer = SummaryWriter(log_path)
 
-    for iteration in range(1, config['niter'] + 1):
+    for iteration in range(1, config["niter"] + 1):
         if iteration % 10000 == 0:
             for param_group in optimizerD_A.param_groups:
-                param_group['lr'] = param_group['lr'] * 0.9
+                param_group["lr"] = param_group["lr"] * 0.9
             for param_group in optimizerD_B.param_groups:
-                param_group['lr'] = param_group['lr'] * 0.9
+                param_group["lr"] = param_group["lr"] * 0.9
             for param_group in optimizerG_A.param_groups:
-                param_group['lr'] = param_group['lr'] * 0.9
+                param_group["lr"] = param_group["lr"] * 0.9
             for param_group in optimizerG_B.param_groups:
-                param_group['lr'] = param_group['lr'] * 0.9
+                param_group["lr"] = param_group["lr"] * 0.9
             for param_group in optimizerE.param_groups:
-                param_group['lr'] = param_group['lr'] * 0.9
+                param_group["lr"] = param_group["lr"] * 0.9
 
         for count in range(0, 5):
             try:
                 real_A = next(A_train_loader_it)[0]
                 real_B = next(B_train_loader_it)[0]
             except StopIteration:
-                A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(B_train_loader)
+                A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(
+                    B_train_loader
+                )
                 real_A = next(A_train_loader_it)[0]
                 real_B = next(B_train_loader_it)[0]
 
-            if (opt['cuda']) and cuda_is_available():
+            if (opt["cuda"]) and cuda_is_available():
                 real_A = real_A.cuda()
                 real_B = real_B.cuda()
 
@@ -274,28 +330,40 @@ def train_scPreGAN(config, opt):
             out_BA = D_A(BA.detach())
             out_AB = D_B(AB.detach())
 
-            D_A_gradient_penalty = calc_gradient_penalty(D_A, real_A.detach(), BA.detach(),
-                                                         batch_size=config['batch_size'], use_cuda=opt['cuda'],
-                                                         lambta=config['lambta_gp'], use_wgan_div=opt['use_wgan_div'])
-            D_B_gradient_penalty = calc_gradient_penalty(D_B, real_B.detach(), AB.detach(),
-                                                         batch_size=config['batch_size'], use_cuda=opt['cuda'],
-                                                         lambta=config['lambta_gp'], use_wgan_div=opt['use_wgan_div'])
+            D_A_gradient_penalty = calc_gradient_penalty(
+                D_A,
+                real_A.detach(),
+                BA.detach(),
+                batch_size=config["batch_size"],
+                use_cuda=opt["cuda"],
+                lambta=config["lambta_gp"],
+                use_wgan_div=opt["use_wgan_div"],
+            )
+            D_B_gradient_penalty = calc_gradient_penalty(
+                D_B,
+                real_B.detach(),
+                AB.detach(),
+                batch_size=config["batch_size"],
+                use_cuda=opt["cuda"],
+                lambta=config["lambta_gp"],
+                use_wgan_div=opt["use_wgan_div"],
+            )
 
-            if opt['gan_loss'] == 'vanilla':
+            if opt["gan_loss"] == "vanilla":
                 D_A_real_loss = F.binary_cross_entropy_with_logits(out_A, ones)
                 D_B_real_loss = F.binary_cross_entropy_with_logits(out_B, ones)
                 D_A_fake_loss = F.binary_cross_entropy_with_logits(out_BA, zeros)
                 D_B_fake_loss = F.binary_cross_entropy_with_logits(out_AB, zeros)
                 D_A_loss = D_A_real_loss + D_A_fake_loss
                 D_B_loss = D_B_real_loss + D_B_fake_loss
-            elif opt['gan_loss'] == 'lsgan':
+            elif opt["gan_loss"] == "lsgan":
                 D_A_real_loss = F.mse_loss(out_A, ones)
                 D_B_real_loss = F.mse_loss(out_B, ones)
                 D_A_fake_loss = F.mse_loss(out_BA, zeros)
                 D_B_fake_loss = F.mse_loss(out_AB, zeros)
                 D_A_loss = D_A_real_loss + D_A_fake_loss
                 D_B_loss = D_B_real_loss + D_B_fake_loss
-            elif opt['gan_loss'] == 'wgan':
+            elif opt["gan_loss"] == "wgan":
                 D_A_real_loss = -torch.mean(out_A)
                 D_B_real_loss = -torch.mean(out_B)
                 D_A_fake_loss = torch.mean(out_BA)
@@ -313,11 +381,13 @@ def train_scPreGAN(config, opt):
             real_A = next(A_train_loader_it)[0]
             real_B = next(B_train_loader_it)[0]
         except StopIteration:
-            A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(B_train_loader)
+            A_train_loader_it, B_train_loader_it = iter(A_train_loader), iter(
+                B_train_loader
+            )
             real_A = next(A_train_loader_it)[0]
             real_B = next(B_train_loader_it)[0]
 
-        if (opt['cuda']) and cuda_is_available():
+        if (opt["cuda"]) and cuda_is_available():
             real_A = real_A.cuda()
             real_B = real_B.cuda()
 
@@ -347,7 +417,7 @@ def train_scPreGAN(config, opt):
         out_ABA = D_A(ABA)
         out_BAB = D_B(BAB)
 
-        if opt['gan_loss'] == 'vanilla':
+        if opt["gan_loss"] == "vanilla":
             G_AA_adv_loss = F.binary_cross_entropy_with_logits(out_AA, ones)
             G_BA_adv_loss = F.binary_cross_entropy_with_logits(out_BA, ones)
             G_ABA_adv_loss = F.binary_cross_entropy_with_logits(out_ABA, ones)
@@ -355,7 +425,7 @@ def train_scPreGAN(config, opt):
             G_BB_adv_loss = F.binary_cross_entropy_with_logits(out_BB, ones)
             G_AB_adv_loss = F.binary_cross_entropy_with_logits(out_AB, ones)
             G_BAB_adv_loss = F.binary_cross_entropy_with_logits(out_BAB, ones)
-        elif opt['gan_loss'] == 'lsgan':
+        elif opt["gan_loss"] == "lsgan":
             G_AA_adv_loss = F.mse_loss(out_AA, ones)
             G_BA_adv_loss = F.mse_loss(out_BA, ones)
             G_ABA_adv_loss = F.mse_loss(out_ABA, ones)
@@ -363,7 +433,7 @@ def train_scPreGAN(config, opt):
             G_BB_adv_loss = F.mse_loss(out_BB, ones)
             G_AB_adv_loss = F.mse_loss(out_AB, ones)
             G_BAB_adv_loss = F.mse_loss(out_BAB, ones)
-        elif opt['gan_loss'] == 'wgan':
+        elif opt["gan_loss"] == "wgan":
             G_AA_adv_loss = -torch.mean(out_AA)
             G_BA_adv_loss = -torch.mean(out_BA)
             G_ABA_adv_loss = -torch.mean(out_ABA)
@@ -375,13 +445,13 @@ def train_scPreGAN(config, opt):
             NotImplementedError("not implement loss")
         G_A_adv_loss = G_AA_adv_loss + G_BA_adv_loss + G_ABA_adv_loss
         G_B_adv_loss = G_BB_adv_loss + G_AB_adv_loss + G_BAB_adv_loss
-        adv_loss = (G_A_adv_loss + G_B_adv_loss) * config['lambda_adv']
+        adv_loss = (G_A_adv_loss + G_B_adv_loss) * config["lambda_adv"]
 
         # reconstruction loss
         l_rec_AA = recon_criterion(AA, real_A)
         l_rec_BB = recon_criterion(BB, real_B)
 
-        recon_loss = (l_rec_AA + l_rec_BB) * config['lambda_recon']
+        recon_loss = (l_rec_AA + l_rec_BB) * config["lambda_recon"]
 
         # encoding loss
         tmp_real_A_z = real_A_z.detach()
@@ -391,8 +461,9 @@ def train_scPreGAN(config, opt):
         l_encoding_BA = encoding_criterion(BA_z, tmp_real_B_z)
         l_encoding_AB = encoding_criterion(AB_z, tmp_real_A_z)
 
-        encoding_loss = (l_encoding_AA + l_encoding_BB + l_encoding_BA + l_encoding_AB) * config[
-            'lambda_encoding']
+        encoding_loss = (
+            l_encoding_AA + l_encoding_BB + l_encoding_BA + l_encoding_AB
+        ) * config["lambda_encoding"]
 
         E_paras = cat([x.view(-1) for x in E.parameters()])
         G_A_paras = cat([x.view(-1) for x in G_A.parameters()])
@@ -400,7 +471,9 @@ def train_scPreGAN(config, opt):
         E_regularization = torch_norm(E_paras, 1)
         G_A_regularization = torch_norm(G_A_paras, 1)
         G_B_regularization = torch_norm(G_B_paras, 1)
-        l1_regularization = (E_regularization + G_A_regularization + G_B_regularization) * config["lambda_l1_reg"]
+        l1_regularization = (
+            E_regularization + G_A_regularization + G_B_regularization
+        ) * config["lambda_l1_reg"]
 
         G_loss = adv_loss + recon_loss + encoding_loss + l1_regularization
 
@@ -412,20 +485,29 @@ def train_scPreGAN(config, opt):
         optimizerG_B.step()
         optimizerE.step()
 
-        writer.add_scalar('D_A_loss', D_A_loss, global_step=iteration)
-        writer.add_scalar('D_B_loss', D_B_loss, global_step=iteration)
-        writer.add_scalar('adv_loss', adv_loss, global_step=iteration)
-        writer.add_scalar('recon_loss', recon_loss, global_step=iteration)
-        writer.add_scalar('encoding_loss', encoding_loss, global_step=iteration)
-        writer.add_scalar('G_loss', G_loss, global_step=iteration)
+        writer.add_scalar("D_A_loss", D_A_loss, global_step=iteration)
+        writer.add_scalar("D_B_loss", D_B_loss, global_step=iteration)
+        writer.add_scalar("adv_loss", adv_loss, global_step=iteration)
+        writer.add_scalar("recon_loss", recon_loss, global_step=iteration)
+        writer.add_scalar("encoding_loss", encoding_loss, global_step=iteration)
+        writer.add_scalar("G_loss", G_loss, global_step=iteration)
 
         if iteration % 100 == 0:
             print(
-                '[%d/%d] D_A_loss: %.4f  D_B_loss: %.4f adv_loss: %.4f  recon_loss: %.4f encoding_loss: %.4f G_loss: %.4f'
-                % (iteration, config['niter'], D_A_loss.item(), D_B_loss.item(), adv_loss.item(), recon_loss.item(),
-                   encoding_loss.item(), G_loss.item()))
+                "[%d/%d] D_A_loss: %.4f  D_B_loss: %.4f adv_loss: %.4f  recon_loss: %.4f encoding_loss: %.4f G_loss: %.4f"
+                % (
+                    iteration,
+                    config["niter"],
+                    D_A_loss.item(),
+                    D_B_loss.item(),
+                    adv_loss.item(),
+                    recon_loss.item(),
+                    encoding_loss.item(),
+                    G_loss.item(),
+                )
+            )
 
-            if opt['validation']:
+            if opt["validation"]:
                 D_A_loss_val = 0.0
                 D_B_loss_val = 0.0
 
@@ -448,7 +530,9 @@ def train_scPreGAN(config, opt):
                             cellA_val = next(A_valid_loader_it)[0]
                             cellB_val = next(B_valid_loader_it)[0]
                         except StopIteration:
-                            A_valid_loader_it, B_valid_loader_it = iter(A_valid_loader), iter(B_valid_loader)
+                            A_valid_loader_it, B_valid_loader_it = iter(
+                                A_valid_loader
+                            ), iter(B_valid_loader)
                             cellA_val = next(A_valid_loader_it)[0]
                             cellB_val = next(B_valid_loader_it)[0]
 
@@ -477,17 +561,25 @@ def train_scPreGAN(config, opt):
                         out_ABA = D_A(ABA)
                         out_BAB = D_B(BAB)
 
-                        if opt['gan_loss'] == 'vanilla':
-                            D_A_real_loss_val = F.binary_cross_entropy_with_logits(outA_val, ones)
-                            D_B_real_loss_val = F.binary_cross_entropy_with_logits(outB_val, ones)
-                            D_A_fake_loss_val = F.binary_cross_entropy_with_logits(out_BA, zeros)
-                            D_B_fake_loss_val = F.binary_cross_entropy_with_logits(out_AB, zeros)
-                        elif opt['gan_loss'] == 'lsgan':
+                        if opt["gan_loss"] == "vanilla":
+                            D_A_real_loss_val = F.binary_cross_entropy_with_logits(
+                                outA_val, ones
+                            )
+                            D_B_real_loss_val = F.binary_cross_entropy_with_logits(
+                                outB_val, ones
+                            )
+                            D_A_fake_loss_val = F.binary_cross_entropy_with_logits(
+                                out_BA, zeros
+                            )
+                            D_B_fake_loss_val = F.binary_cross_entropy_with_logits(
+                                out_AB, zeros
+                            )
+                        elif opt["gan_loss"] == "lsgan":
                             D_A_real_loss_val = F.mse_loss(outA_val, ones)
                             D_B_real_loss_val = F.mse_loss(outB_val, ones)
                             D_A_fake_loss_val = F.mse_loss(out_BA, zeros)
                             D_B_fake_loss_val = F.mse_loss(out_AB, zeros)
-                        elif opt['gan_loss'] == 'wgan':
+                        elif opt["gan_loss"] == "wgan":
                             D_A_real_loss_val = -torch.mean(outA_val)
                             D_B_real_loss_val = -torch.mean(outB_val)
                             D_A_fake_loss_val = torch.mean(out_BA)
@@ -498,16 +590,28 @@ def train_scPreGAN(config, opt):
                         D_A_loss_val += (D_A_real_loss_val + D_A_fake_loss_val).item()
                         D_B_loss_val += (D_B_real_loss_val + D_B_fake_loss_val).item()
 
-                        if opt['gan_loss'] == 'vanilla':
-                            G_AA_adv_loss_val = F.binary_cross_entropy_with_logits(out_AA, ones)
-                            G_BA_adv_loss_val = F.binary_cross_entropy_with_logits(out_BA, ones)
-                            G_ABA_adv_loss_val = F.binary_cross_entropy_with_logits(out_ABA, ones)
+                        if opt["gan_loss"] == "vanilla":
+                            G_AA_adv_loss_val = F.binary_cross_entropy_with_logits(
+                                out_AA, ones
+                            )
+                            G_BA_adv_loss_val = F.binary_cross_entropy_with_logits(
+                                out_BA, ones
+                            )
+                            G_ABA_adv_loss_val = F.binary_cross_entropy_with_logits(
+                                out_ABA, ones
+                            )
 
-                            G_BB_adv_loss_val = F.binary_cross_entropy_with_logits(out_BB, ones)
-                            G_AB_adv_loss_val = F.binary_cross_entropy_with_logits(out_AB, ones)
-                            G_BAB_adv_loss_val = F.binary_cross_entropy_with_logits(out_BAB, ones)
+                            G_BB_adv_loss_val = F.binary_cross_entropy_with_logits(
+                                out_BB, ones
+                            )
+                            G_AB_adv_loss_val = F.binary_cross_entropy_with_logits(
+                                out_AB, ones
+                            )
+                            G_BAB_adv_loss_val = F.binary_cross_entropy_with_logits(
+                                out_BAB, ones
+                            )
 
-                        elif opt['gan_loss'] == 'lsgan':
+                        elif opt["gan_loss"] == "lsgan":
                             G_AA_adv_loss_val = F.mse_loss(out_AA, ones)
                             G_BA_adv_loss_val = F.mse_loss(out_BA, ones)
                             G_ABA_adv_loss_val = F.mse_loss(out_ABA, ones)
@@ -516,7 +620,7 @@ def train_scPreGAN(config, opt):
                             G_AB_adv_loss_val = F.mse_loss(out_AB, ones)
                             G_BAB_adv_loss_val = F.mse_loss(out_BAB, ones)
 
-                        elif opt['gan_loss'] == 'wgan':
+                        elif opt["gan_loss"] == "wgan":
                             G_AA_adv_loss_val = -torch.mean(out_AA)
                             G_BA_adv_loss_val = -torch.mean(out_BA)
                             G_ABA_adv_loss_val = -torch.mean(out_ABA)
@@ -526,14 +630,22 @@ def train_scPreGAN(config, opt):
                             G_BAB_adv_loss_val = -torch.mean(out_BAB)
                         else:
                             NotImplementedError("not implement loss")
-                        G_A_adv_loss_val = G_AA_adv_loss_val + G_BA_adv_loss_val + G_ABA_adv_loss_val
-                        G_B_adv_loss_val = G_BB_adv_loss_val + G_AB_adv_loss_val + G_BAB_adv_loss_val
-                        adv_loss_val += (G_A_adv_loss_val + G_B_adv_loss_val).item() * config['lambda_adv']
+                        G_A_adv_loss_val = (
+                            G_AA_adv_loss_val + G_BA_adv_loss_val + G_ABA_adv_loss_val
+                        )
+                        G_B_adv_loss_val = (
+                            G_BB_adv_loss_val + G_AB_adv_loss_val + G_BAB_adv_loss_val
+                        )
+                        adv_loss_val += (
+                            G_A_adv_loss_val + G_B_adv_loss_val
+                        ).item() * config["lambda_adv"]
 
                         # reconstruction loss
                         l_rec_AA_val = recon_criterion(AA, cellA_val)
                         l_rec_BB_val = recon_criterion(BB, cellB_val)
-                        recon_loss_val += (l_rec_AA_val + l_rec_BB_val).item() * config['lambda_recon']
+                        recon_loss_val += (l_rec_AA_val + l_rec_BB_val).item() * config[
+                            "lambda_recon"
+                        ]
 
                         # encoding loss
                         l_encoding_AA_val = encoding_criterion(AA_z, real_A_z)
@@ -541,8 +653,11 @@ def train_scPreGAN(config, opt):
                         l_encoding_BA_val = encoding_criterion(BA_z, real_B_z)
                         l_encoding_AB_val = encoding_criterion(AB_z, real_A_z)
                         encoding_loss_val = (
-                                                    l_encoding_AA_val + l_encoding_BB_val + l_encoding_BA_val + l_encoding_AB_val).item() * \
-                                            config['lambda_encoding']
+                            l_encoding_AA_val
+                            + l_encoding_BB_val
+                            + l_encoding_BA_val
+                            + l_encoding_AB_val
+                        ).item() * config["lambda_encoding"]
                         G_loss_val += adv_loss_val + recon_loss_val + encoding_loss_val
 
                         cellA_val_np = cellA_val.cpu().detach().numpy()
@@ -551,132 +666,174 @@ def train_scPreGAN(config, opt):
                         cellA_val_zero = cellA_val_np[cellA_val_np <= 0]
                         cellB_val_zero = cellB_val_np[cellB_val_np <= 0]
 
-                        sparcity_cellA_val += cellA_val_zero.shape[0] / (cellA_val_np.shape[0] * cellA_val_np.shape[1])
-                        sparcity_cellB_val += cellB_val_zero.shape[0] / (cellB_val_np.shape[0] * cellB_val_np.shape[1])
+                        sparcity_cellA_val += cellA_val_zero.shape[0] / (
+                            cellA_val_np.shape[0] * cellA_val_np.shape[1]
+                        )
+                        sparcity_cellB_val += cellB_val_zero.shape[0] / (
+                            cellB_val_np.shape[0] * cellB_val_np.shape[1]
+                        )
 
                 print(
-                    '[%d/%d] adv_loss_val: %.4f  recon_loss_val: %.4f encoding_loss_val: %.4f  G_loss: %.4f D_A_loss_val: %.4f D_B_loss_val: %.4f'
-                    % (iteration, config['niter'], adv_loss_val / counter, recon_loss_val / counter,
-                       encoding_loss_val / counter, G_loss / counter, D_A_loss_val / counter, D_B_loss_val / counter))
+                    "[%d/%d] adv_loss_val: %.4f  recon_loss_val: %.4f encoding_loss_val: %.4f  G_loss: %.4f D_A_loss_val: %.4f D_B_loss_val: %.4f"
+                    % (
+                        iteration,
+                        config["niter"],
+                        adv_loss_val / counter,
+                        recon_loss_val / counter,
+                        encoding_loss_val / counter,
+                        G_loss / counter,
+                        D_A_loss_val / counter,
+                        D_B_loss_val / counter,
+                    )
+                )
 
-                writer.add_scalar('adv_loss_val', adv_loss_val / counter, global_step=iteration)
-                writer.add_scalar('recon_loss_val', recon_loss_val / counter, global_step=iteration)
-                writer.add_scalar('encoding_loss_val', encoding_loss_val / counter, global_step=iteration)
-                writer.add_scalar('G_loss', G_loss / counter, global_step=iteration)
-                writer.add_scalar('D_A_loss_val', D_A_loss_val / counter, global_step=iteration)
-                writer.add_scalar('D_B_loss_val', D_B_loss_val / counter, global_step=iteration)
+                writer.add_scalar(
+                    "adv_loss_val", adv_loss_val / counter, global_step=iteration
+                )
+                writer.add_scalar(
+                    "recon_loss_val", recon_loss_val / counter, global_step=iteration
+                )
+                writer.add_scalar(
+                    "encoding_loss_val",
+                    encoding_loss_val / counter,
+                    global_step=iteration,
+                )
+                writer.add_scalar("G_loss", G_loss / counter, global_step=iteration)
+                writer.add_scalar(
+                    "D_A_loss_val", D_A_loss_val / counter, global_step=iteration
+                )
+                writer.add_scalar(
+                    "D_B_loss_val", D_B_loss_val / counter, global_step=iteration
+                )
 
                 print(
-                    '[%d/%d] adv_loss_val: %.4f  recon_loss_val: %.4f encoding_loss_val: %.4f  G_loss: %.4f D_A_loss_val: %.4f D_B_loss_val: %.4f'
-                    % (iteration, config['niter'], adv_loss_val / counter, recon_loss_val / counter,
-                       encoding_loss_val / counter, G_loss / counter, D_A_loss_val / counter, D_B_loss_val / counter))
-        if opt['checkpoint_dir'] is not None and iteration % 10000 == 0:
-            path = os.path.join(opt['checkpoint_dir'], "checkpoint_E.pth")
+                    "[%d/%d] adv_loss_val: %.4f  recon_loss_val: %.4f encoding_loss_val: %.4f  G_loss: %.4f D_A_loss_val: %.4f D_B_loss_val: %.4f"
+                    % (
+                        iteration,
+                        config["niter"],
+                        adv_loss_val / counter,
+                        recon_loss_val / counter,
+                        encoding_loss_val / counter,
+                        G_loss / counter,
+                        D_A_loss_val / counter,
+                        D_B_loss_val / counter,
+                    )
+                )
+        if opt["checkpoint_dir"] is not None and iteration % 10000 == 0:
+            path = os.path.join(opt["checkpoint_dir"], "checkpoint_E.pth")
             torch.save((E.state_dict(), optimizerE.state_dict()), path)
-            path = os.path.join(opt['checkpoint_dir'], "checkpoint_G_A.pth")
+            path = os.path.join(opt["checkpoint_dir"], "checkpoint_G_A.pth")
             torch.save((G_A.state_dict(), optimizerG_A.state_dict()), path)
-            path = os.path.join(opt['checkpoint_dir'], "checkpoint_G_B.pth")
+            path = os.path.join(opt["checkpoint_dir"], "checkpoint_G_B.pth")
             torch.save((G_B.state_dict(), optimizerG_B.state_dict()), path)
-            path = os.path.join(opt['checkpoint_dir'], "checkpoint_D_A.pth")
+            path = os.path.join(opt["checkpoint_dir"], "checkpoint_D_A.pth")
             torch.save((D_A.state_dict(), optimizerD_A.state_dict()), path)
-            path = os.path.join(opt['checkpoint_dir'], "checkpoint_D_B.pth")
+            path = os.path.join(opt["checkpoint_dir"], "checkpoint_D_B.pth")
             torch.save((D_B.state_dict(), optimizerD_B.state_dict()), path)
 
-    torch.save(E, os.path.join(opt['outf'], f'E_{opt["prediction_type"]}.pth'))
-    torch.save(G_A, os.path.join(opt['outf'], f'G_A_{opt["prediction_type"]}.pth'))
-    torch.save(G_B, os.path.join(opt['outf'], f'G_B_{opt["prediction_type"]}.pth'))
-    torch.save(D_A, os.path.join(opt['outf'], f'D_A_{opt["prediction_type"]}.pth'))
-    torch.save(D_B, os.path.join(opt['outf'], f'D_B_{opt["prediction_type"]}.pth'))
+    torch.save(E, os.path.join(opt["outf"], f'E_{opt["prediction_type"]}.pth'))
+    torch.save(G_A, os.path.join(opt["outf"], f'G_A_{opt["prediction_type"]}.pth'))
+    torch.save(G_B, os.path.join(opt["outf"], f'G_B_{opt["prediction_type"]}.pth'))
+    torch.save(D_A, os.path.join(opt["outf"], f'D_A_{opt["prediction_type"]}.pth'))
+    torch.save(D_B, os.path.join(opt["outf"], f'D_B_{opt["prediction_type"]}.pth'))
     writer.close()
     print("Finished Training")
-    adata = sc.read(opt['dataPath'])
-    control_adata = adata[(adata.obs[opt['cell_type_key']] == opt['prediction_type']) & (
-            adata.obs[opt['condition_key']] == opt['condition']['control'])]
+    adata = sc.read(opt["dataPath"])
+    control_adata = adata[
+        (adata.obs[opt["cell_type_key"]] == opt["prediction_type"])
+        & (adata.obs[opt["condition_key"]] == opt["condition"]["control"])
+    ]
 
     if sparse.issparse(control_adata.X):
         control_tensor = Tensor(control_adata.X.A)
     else:
         control_tensor = Tensor(control_adata.X)
-    if opt['cuda'] and cuda_is_available():
+    if opt["cuda"] and cuda_is_available():
         control_tensor = control_tensor.cuda()
     control_z = E(control_tensor)
     case_pred = G_B(control_z)
-    pred_perturbed_adata = anndata.AnnData(X=case_pred.cpu().detach().numpy(),
-                                           obs={opt['condition_key']: ["pred_perturbed"] * len(case_pred),
-                                                opt['cell_type_key']: control_adata.obs[opt['cell_type_key']].tolist()})
-    if not os.path.exists(os.path.join(opt['outf'], 'pred_adata')):
-        os.makedirs(os.path.join(opt['outf'], 'pred_adata'))
-    pred_perturbed_adata.write_h5ad(os.path.join(opt['outf'], 'pred_adata', f'pred_{opt["prediction_type"]}.h5ad'))
+    pred_perturbed_adata = anndata.AnnData(
+        X=case_pred.cpu().detach().numpy(),
+        obs={
+            opt["condition_key"]: ["pred_perturbed"] * len(case_pred),
+            opt["cell_type_key"]: control_adata.obs[opt["cell_type_key"]].tolist(),
+        },
+    )
+    if not os.path.exists(os.path.join(opt["outf"], "pred_adata")):
+        os.makedirs(os.path.join(opt["outf"], "pred_adata"))
+    pred_perturbed_adata.write_h5ad(
+        os.path.join(opt["outf"], "pred_adata", f'pred_{opt["prediction_type"]}.h5ad')
+    )
 
 
 def main(data_name):
-    if data_name == 'pbmc':
+    if data_name == "pbmc":
         opt = {
-            'cuda': True,
-            'dataPath': '/home/wxj/scPreGAN/datasets/pbmc/pbmc.h5ad',
-            'checkpoint_dir': None,
-            'condition_key': 'condition',
-            'condition': {"case": "stimulated", "control": "control"},
-            'cell_type_key': 'cell_type',
-            'prediction_type': None,
-            'out_sample_prediction': True,
-            'manual_seed': 3060,
-            'data_name': 'pbmc',
-            'model_name': 'pbmc_OOD',
-            'outf': '/home/wxj/scPreGAN/datasets/pbmc/pbmc_OOD',
-            'validation': False,
-            'valid_dataPath': None,
-            'use_sn': True,
-            'use_wgan_div': True,
-            'gan_loss': 'wgan'
+            "cuda": True,
+            "dataPath": "/home/wxj/scPreGAN/datasets/pbmc/pbmc.h5ad",
+            "checkpoint_dir": None,
+            "condition_key": "condition",
+            "condition": {"case": "stimulated", "control": "control"},
+            "cell_type_key": "cell_type",
+            "prediction_type": None,
+            "out_sample_prediction": True,
+            "manual_seed": 3060,
+            "data_name": "pbmc",
+            "model_name": "pbmc_OOD",
+            "outf": "/home/wxj/scPreGAN/datasets/pbmc/pbmc_OOD",
+            "validation": False,
+            "valid_dataPath": None,
+            "use_sn": True,
+            "use_wgan_div": True,
+            "gan_loss": "wgan",
         }
-    elif data_name == 'hpoly':
+    elif data_name == "hpoly":
         opt = {
-            'cuda': True,
-            'dataPath': '/home/wxj/scPreGAN/datasets/Hpoly/hpoly.h5ad',
-            'checkpoint_dir': None,
-            'condition_key': 'condition',
-            'condition': {"case": "Hpoly.Day10", "control": "Control"},
-            'cell_type_key': 'cell_label',
-            'prediction_type': None,
-            'out_sample_prediction': True,
-            'manual_seed': 3060,
-            'data_name': 'hpoly',
-            'model_name': 'hpoly_OOD',
-            'outf': '/home/wxj/scPreGAN/datasets/Hpoly/hpoly_OOD',
-            'validation': False,
-            'valid_dataPath': None,
-            'test_dataPath': '/home/wxj/scPreGAN/datasets/Hpoly/valid_hpoly.h5ad',
-            'use_sn': True,
-            'use_wgan_div': True,
-            'gan_loss': 'wgan'
+            "cuda": True,
+            "dataPath": "/home/wxj/scPreGAN/datasets/Hpoly/hpoly.h5ad",
+            "checkpoint_dir": None,
+            "condition_key": "condition",
+            "condition": {"case": "Hpoly.Day10", "control": "Control"},
+            "cell_type_key": "cell_label",
+            "prediction_type": None,
+            "out_sample_prediction": True,
+            "manual_seed": 3060,
+            "data_name": "hpoly",
+            "model_name": "hpoly_OOD",
+            "outf": "/home/wxj/scPreGAN/datasets/Hpoly/hpoly_OOD",
+            "validation": False,
+            "valid_dataPath": None,
+            "test_dataPath": "/home/wxj/scPreGAN/datasets/Hpoly/valid_hpoly.h5ad",
+            "use_sn": True,
+            "use_wgan_div": True,
+            "gan_loss": "wgan",
         }
-    elif data_name == 'species':
+    elif data_name == "species":
         opt = {
-            'cuda': True,
-            'dataPath': '/home/wxj/scPreGAN/datasets/species/species.h5ad',
-            'checkpoint_dir': None,
-            'condition_key': 'condition',
-            'condition': {"case": "LPS6", "control": "unst"},
-            'cell_type_key': 'species',
-            'prediction_type': None,
-            'out_sample_prediction': True,
-            'manual_seed': 3060,
-            'data_name': 'species',
-            'model_name': 'species_OOD',
-            'outf': '/home/wxj/scPreGAN/datasets/species/species_OOD',
-            'validation': False,
-            'valid_dataPath': None,
-            'use_sn': True,
-            'use_wgan_div': True,
-            'gan_loss': 'wgan'
+            "cuda": True,
+            "dataPath": "/home/wxj/scPreGAN/datasets/species/species.h5ad",
+            "checkpoint_dir": None,
+            "condition_key": "condition",
+            "condition": {"case": "LPS6", "control": "unst"},
+            "cell_type_key": "species",
+            "prediction_type": None,
+            "out_sample_prediction": True,
+            "manual_seed": 3060,
+            "data_name": "species",
+            "model_name": "species_OOD",
+            "outf": "/home/wxj/scPreGAN/datasets/species/species_OOD",
+            "validation": False,
+            "valid_dataPath": None,
+            "use_sn": True,
+            "use_wgan_div": True,
+            "gan_loss": "wgan",
         }
     else:
         NotImplementedError()
 
     if cuda_is_available():
         try:
-            mp.set_start_method('spawn')
+            mp.set_start_method("spawn")
         except RuntimeError:
             pass
         cudnn.benchmark = True
@@ -692,25 +849,25 @@ def main(data_name):
         "lr_g": 0.001,
         "min_hidden_size": 256,
         "niter": 20000,
-        "z_dim": 16
+        "z_dim": 16,
     }
 
-    opt['out_sample_prediction'] = True
-    adata = sc.read(opt['dataPath'])
-    cell_type_list = adata.obs[opt['cell_type_key']].unique().tolist()
+    opt["out_sample_prediction"] = True
+    adata = sc.read(opt["dataPath"])
+    cell_type_list = adata.obs[opt["cell_type_key"]].unique().tolist()
     print("cell type list: " + str(cell_type_list))
     for cell_type in cell_type_list:
         print("=================" + cell_type + "=========================")
-        opt['prediction_type'] = cell_type
+        opt["prediction_type"] = cell_type
 
-        if not os.path.exists(opt['outf']):
-            os.makedirs(opt['outf'])
-        train_scPreGAN(config, opt)
+        if not os.path.exists(opt["outf"]):
+            os.makedirs(opt["outf"])
+        train_and_evaluate(config, opt)
 
 
 if __name__ == "__main__":
     try:
-        mp.set_start_method('spawn')
+        mp.set_start_method("spawn")
     except RuntimeError:
         pass
-    main(data_name='pbmc')
+    main(data_name="pbmc")
