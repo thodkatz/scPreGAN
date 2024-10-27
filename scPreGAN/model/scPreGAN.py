@@ -108,6 +108,7 @@ class Model:
         self,
         train_data,
         output_path: Path,
+        tensorboard_path: Path,
         load_model: bool = False,
         valid_data=None,
         niter=20000,
@@ -123,7 +124,6 @@ class Model:
         p=6,
     ):
         model_path = output_path / "model"
-        log_path = output_path / "logger"
 
         if load_model:
             print("Loading model from", model_path)
@@ -238,8 +238,8 @@ class Model:
         self.G_B.train()
         self.E.train()
 
-        os.makedirs(log_path, exist_ok=True)
-        writer = SummaryWriter(log_path)
+        os.makedirs(tensorboard_path, exist_ok=True)
+        writer = SummaryWriter(tensorboard_path)
 
         # Training
         for iteration in range(1, niter + 1):
@@ -628,10 +628,11 @@ class Model:
         self.E.eval()
         
         if sparse.issparse(control_adata.X):
-            control_tensor = Tensor(control_adata.X.A)
+            control_tensor = Tensor(control_adata.X.toarray())
         else:
             control_tensor = Tensor(control_adata.X)
         if self.use_cuda and cuda_is_available():
+            print("Using CUDA for evaluation")
             control_tensor = control_tensor.cuda()
             
         with torch.no_grad():
@@ -645,7 +646,7 @@ class Model:
                 cell_type_key: control_adata.obs[cell_type_key].tolist(),
             },
         )
-        
         pred_perturbed_adata.var_names = control_adata.var_names
+        
         print("Predicting data finished")
         return pred_perturbed_adata

@@ -1,7 +1,9 @@
 from __future__ import print_function
 import os
+from pathlib import Path
 import random
 import numpy as np
+from scPreGAN.model.scPreGAN import is_model_trained
 import torch
 import torch.nn as nn
 from torch import mean, exp, unique, cat, isnan
@@ -24,6 +26,7 @@ from scPreGAN.reproducibility.util import load_anndata
 from scPreGAN.reproducibility.model.Discriminator import Discriminator
 from scPreGAN.reproducibility.model.Generator import Generator
 from scPreGAN.reproducibility.model.Encoder import Encoder
+from anndata import AnnData
 
 
 def init_weights(m):
@@ -109,7 +112,20 @@ def calc_gradient_penalty(
     return gradient_penalty
 
 
-def train_and_evaluate(config, opt):
+def train_and_predict(config, opt, tensorboard_path: Path, load_model=False) -> AnnData:
+    output_path = opt['outf']
+    model_path = output_path / "model"
+    
+    if load_model:
+        assert is_model_trained(output_path)
+        print("Loading model from", model_path)
+        return
+        
+    
+    os.makedirs(model_path, exist_ok=True)
+    os.makedirs(tensorboard_path, exist_ok=True)
+    
+    
     if opt["manual_seed"] is None:
         opt["manual_seed"] = random.randint(1, 10000)
     print("Random Seed: ", opt["manual_seed"])
@@ -282,10 +298,7 @@ def train_and_evaluate(config, opt):
     D_A_loss = 0.0
     D_B_loss = 0.0
 
-    log_path = f'./runs/{opt["data_name"]}/{opt["model_name"]}'
-    if not os.path.exists(log_path):
-        os.makedirs(log_path)
-    writer = SummaryWriter(log_path)
+    writer = SummaryWriter(tensorboard_path)
 
     for iteration in range(1, config["niter"] + 1):
         if iteration % 10000 == 0:
@@ -731,11 +744,11 @@ def train_and_evaluate(config, opt):
             path = os.path.join(opt["checkpoint_dir"], "checkpoint_D_B.pth")
             torch.save((D_B.state_dict(), optimizerD_B.state_dict()), path)
 
-    torch.save(E, os.path.join(opt["outf"], f'E_{opt["prediction_type"]}.pth'))
-    torch.save(G_A, os.path.join(opt["outf"], f'G_A_{opt["prediction_type"]}.pth'))
-    torch.save(G_B, os.path.join(opt["outf"], f'G_B_{opt["prediction_type"]}.pth'))
-    torch.save(D_A, os.path.join(opt["outf"], f'D_A_{opt["prediction_type"]}.pth'))
-    torch.save(D_B, os.path.join(opt["outf"], f'D_B_{opt["prediction_type"]}.pth'))
+    torch.save(E.state_dict(), os.path.join(opt["outf"], 'E.pth'))
+    torch.save(G_A.state_dict(), os.path.join(opt["outf"], 'G_A.pth'))
+    torch.save(G_B.state_dict(), os.path.join(opt["outf"], 'G_B.pth'))
+    torch.save(D_A.state_dict(), os.path.join(opt["outf"], 'D_A.pth'))
+    torch.save(D_B.state_dict(), os.path.join(opt["outf"], 'D_B.pth'))
     writer.close()
     print("Finished Training")
     adata = sc.read(opt["dataPath"])
@@ -743,27 +756,39 @@ def train_and_evaluate(config, opt):
         (adata.obs[opt["cell_type_key"]] == opt["prediction_type"])
         & (adata.obs[opt["condition_key"]] == opt["condition"]["control"])
     ]
+    
+    
+    """
+    Evaluate
+    """
+    D_A.eval()
+    D_B.eval()
+    G_A.eval()
+    G_B.eval()
+    E.eval()
 
     if sparse.issparse(control_adata.X):
-        control_tensor = Tensor(control_adata.X.A)
+        control_tensor = Tensor(control_adata.X.toarray())
     else:
         control_tensor = Tensor(control_adata.X)
     if opt["cuda"] and cuda_is_available():
+        print("Using CUDA for evaluation")
         control_tensor = control_tensor.cuda()
-    control_z = E(control_tensor)
-    case_pred = G_B(control_z)
-    pred_perturbed_adata = anndata.AnnData(
+        
+    with torch.no_grad():
+        control_z = E(control_tensor)
+        case_pred = G_B(control_z)
+        
+    pred_perturbed_adata = sc.AnnData(
         X=case_pred.cpu().detach().numpy(),
         obs={
             opt["condition_key"]: ["pred_perturbed"] * len(case_pred),
             opt["cell_type_key"]: control_adata.obs[opt["cell_type_key"]].tolist(),
         },
     )
-    if not os.path.exists(os.path.join(opt["outf"], "pred_adata")):
-        os.makedirs(os.path.join(opt["outf"], "pred_adata"))
-    pred_perturbed_adata.write_h5ad(
-        os.path.join(opt["outf"], "pred_adata", f'pred_{opt["prediction_type"]}.h5ad')
-    )
+    
+    pred_perturbed_adata.var_names = control_adata.var_names
+    return pred_perturbed_adata
 
 
 def main(data_name):
@@ -862,7 +887,7 @@ def main(data_name):
 
         if not os.path.exists(opt["outf"]):
             os.makedirs(opt["outf"])
-        train_and_evaluate(config, opt)
+        train_and_predict(config, opt)
 
 
 if __name__ == "__main__":
