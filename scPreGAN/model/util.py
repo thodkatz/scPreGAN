@@ -22,27 +22,25 @@ def label_encoder(adata, cell_type_key, encode_attr):
 
 
 def load_anndata(
-    path,
+    adata,
     condition_key,
     condition,
     cell_type_key,
     target_cell_type,
 ):
-    adata = sc.read(path)
-
+    if sparse.issparse(adata.X):
+        adata.X = adata.X.toarray()
+        
     encode_attr = adata.obs[cell_type_key].unique().tolist()
     adata_celltype_ohe = label_encoder(adata, cell_type_key, encode_attr)
 
     adata_celltype_ohe_pd = pd.DataFrame(data=adata_celltype_ohe, index=adata.obs_names)
 
     perturb_adata = adata[adata.obs[condition_key] == condition["case"]]
-
+    
     case_adata = perturb_adata[perturb_adata.obs[cell_type_key] != target_cell_type]
 
     control_adata = adata[adata.obs[condition_key] == condition["control"]]
-
-    if sparse.issparse(adata.X):
-        adata.X = adata.X.toarray()
 
     control_pd = pd.DataFrame(
         data=control_adata.X,

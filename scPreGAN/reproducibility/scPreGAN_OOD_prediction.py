@@ -136,7 +136,7 @@ def train_and_predict(config, opt, tensorboard_path: Path, load_model=False) -> 
         torch.cuda.manual_seed_all(opt["manual_seed"])
     # load data===============================
     A_pd, A_celltype_ohe_pd, B_pd, B_celltype_ohe_pd = load_anndata(
-        path=opt["dataPath"],
+        adata=opt["dataset"],
         condition_key=opt["condition_key"],
         condition=opt["condition"],
         cell_type_key=opt["cell_type_key"],
@@ -752,7 +752,9 @@ def train_and_predict(config, opt, tensorboard_path: Path, load_model=False) -> 
     torch.save(D_B.state_dict(), os.path.join(model_path, 'D_B.pth'))
     writer.close()
     print("Finished Training")
-    adata = sc.read(opt["dataPath"])
+    
+    adata = opt["dataset"]
+    
     control_adata = adata[
         (adata.obs[opt["cell_type_key"]] == opt["prediction_type"])
         & (adata.obs[opt["condition_key"]] == opt["condition"]["control"])

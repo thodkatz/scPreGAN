@@ -16,8 +16,7 @@ def label_encoder(adata, cell_type_key, encode_attr):
     return labels_onehot[len(encode_attr):, ]
 
 
-def load_anndata(path, condition_key, condition, cell_type_key, prediction_type=None, out_sample_prediction=False):
-    adata = sc.read(path)
+def load_anndata(adata, condition_key, condition, cell_type_key, prediction_type=None, out_sample_prediction=False):
 
     encode_attr = adata.obs[cell_type_key].unique().tolist()
     adata_celltype_ohe = label_encoder(adata, cell_type_key, encode_attr)
